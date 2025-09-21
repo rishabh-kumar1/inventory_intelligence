@@ -204,6 +204,8 @@ class InventoryAnalyzer:
 
             # First try UPC lookup for exact product match
             upc = str(row['ITEM UPC']).strip() if pd.notna(row['ITEM UPC']) else None
+            if upc and upc != 'nan':
+                upc = upc.rstrip('.0')
             product_info = None
 
             if upc and upc != 'nan':
