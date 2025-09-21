@@ -13,6 +13,7 @@ from typing import Dict, Tuple, Optional
 import json
 import logging
 from walmart_auth import WalmartAuth
+from product_search_enhancer import ProductSearchEnhancer
 
 # Configure logging
 logging.basicConfig(
@@ -35,10 +36,13 @@ class InventoryAnalyzer:
             consumer_id = "bf5182d5-de59-4483-8b42-adf0be373047"
             private_key_path = "/Users/rishabh/WM_IO_private_key.pem"
             self.walmart_api = WalmartAuth(consumer_id, private_key_path)
-            logger.info(" Walmart API initialized successfully")
+            logger.info("✓ Walmart API initialized successfully")
         except Exception as e:
-            logger.warning(f" Could not initialize Walmart API: {e}")
+            logger.warning(f"⚠ Could not initialize Walmart API: {e}")
             self.walmart_api = None
+
+        # Initialize Product Search Enhancer with Walmart fuzzy search
+        self.product_searcher = ProductSearchEnhancer(walmart_auth=self.walmart_api)
 
     def clean_price(self, price_str: str) -> float:
         """Clean and convert price string to float."""
@@ -153,6 +157,13 @@ class InventoryAnalyzer:
                     logger.debug(f"Using UPCitemdb {merchant} link for UPC {upc} (no price)")
                     return (0.0, offer['link'])
 
+        # NEW: Try fuzzy search as final fallback when UPC methods fail
+        logger.debug(f"Trying fuzzy search fallback for: {product_name[:50]}...")
+        fuzzy_price, fuzzy_url = self.product_searcher.search_product_price(product_name)
+        if fuzzy_price > 0:
+            logger.info(f"🔍 Found fuzzy match: ${fuzzy_price:.2f} for '{product_name[:30]}...'")
+            return (fuzzy_price, fuzzy_url)
+
         logger.debug(f"No retail price or link found for {product_name[:50]}...")
         return (0.0, "")
 
@@ -162,9 +173,11 @@ class InventoryAnalyzer:
             return 0.0
         return ((retail_price - supplier_price) / retail_price) * 100
 
-    def categorize_price(self, discount_percentage: float) -> str:
+    def categorize_price(self, discount_percentage: float, retail_price: float) -> str:
         """Categorize price based on discount thresholds."""
-        if discount_percentage >= 75:
+        if retail_price <= 0:
+            return "No Price Found"
+        elif discount_percentage >= 75:
             return "Good Price"
         elif discount_percentage >= 60:
             return "Okay Price"
@@ -225,7 +238,7 @@ class InventoryAnalyzer:
             # Calculate discount and categorize
             supplier_price = row['Supplier_Price']
             discount_pct = self.calculate_discount_percentage(supplier_price, retail_price)
-            category = self.categorize_price(discount_pct)
+            category = self.categorize_price(discount_pct, retail_price)
 
             logger.debug(f"💵 Supplier: ${supplier_price:.2f} | Retail: ${retail_price:.2f} | Discount: {discount_pct:.1f}% | Category: {category}")
 
@@ -250,6 +263,14 @@ class InventoryAnalyzer:
         logger.info(f"   • Walmart prices found: {walmart_found}")
         logger.info(f"   • No prices found: {no_price_found}")
         logger.info(f"   • Success rate: {(walmart_found/total_items)*100:.1f}%")
+        
+        # Enhanced search statistics
+        if hasattr(self, 'product_searcher'):
+            search_stats = self.product_searcher.get_cache_stats()
+            if search_stats['total_searches'] > 0:
+                logger.info(f"   • Fuzzy search attempts: {search_stats['total_searches']}")
+                logger.info(f"   • Fuzzy search hits: {search_stats['cache_hits']}")
+                logger.info(f"   • Fuzzy search hit rate: {search_stats['hit_rate']*100:.1f}%")
 
         return df
 
@@ -261,6 +282,7 @@ class InventoryAnalyzer:
         good_items = len(df[df['Price_Category'] == 'Good Price'])
         okay_items = len(df[df['Price_Category'] == 'Okay Price'])
         bad_items = len(df[df['Price_Category'] == 'Bad Price'])
+        no_price_items = len(df[df['Price_Category'] == 'No Price Found'])
 
         print("\n" + "="*60)
         print("INVENTORY ANALYSIS REPORT")
@@ -269,21 +291,29 @@ class InventoryAnalyzer:
         print(f"Good Price (>75% off): {good_items} ({good_items/total_items*100:.1f}%)")
         print(f"Okay Price (60-75% off): {okay_items} ({okay_items/total_items*100:.1f}%)")
         print(f"Bad Price (<60% off): {bad_items} ({bad_items/total_items*100:.1f}%)")
+        print(f"No Price Found: {no_price_items} ({no_price_items/total_items*100:.1f}%)")
 
-        logger.info(f"Report Summary - Good: {good_items}, Okay: {okay_items}, Bad: {bad_items}")
+        logger.info(f"Report Summary - Good: {good_items}, Okay: {okay_items}, Bad: {bad_items}, No Price: {no_price_items}")
 
         print("\nTop 10 Best Deals (Highest Discount %):")
         top_deals = df.nlargest(10, 'Discount_Percentage')[['Inventory ID', 'Description', 'Supplier_Price', 'Retail_Price', 'Discount_Percentage', 'Price_Category']]
         for _, item in top_deals.iterrows():
             print(f"  {item['Inventory ID']}: {item['Discount_Percentage']:.1f}% off - {item['Price_Category']}")
 
-        print("\nWorst Deals (Lowest Discount %):")
-        worst_deals = df.nsmallest(5, 'Discount_Percentage')[['Inventory ID', 'Description', 'Supplier_Price', 'Retail_Price', 'Discount_Percentage', 'Price_Category']]
-        for _, item in worst_deals.iterrows():
-            print(f"  {item['Inventory ID']}: {item['Discount_Percentage']:.1f}% off - {item['Price_Category']}")
+        print("\nWorst Deals (Lowest Discount % - excluding items with no price):")
+        # Filter out items with no price found for worst deals calculation
+        priced_items = df[df['Price_Category'] != 'No Price Found']
+        if len(priced_items) > 0:
+            worst_deals = priced_items.nsmallest(5, 'Discount_Percentage')[['Inventory ID', 'Description', 'Supplier_Price', 'Retail_Price', 'Discount_Percentage', 'Price_Category']]
+            for _, item in worst_deals.iterrows():
+                print(f"  {item['Inventory ID']}: {item['Discount_Percentage']:.1f}% off - {item['Price_Category']}")
+        else:
+            print("  No priced items available for comparison")
 
 def main():
     logger.info("Starting Inventory Intelligence Analyzer")
+    logger.info("🚀 Enhanced mode: UPC + Walmart API + Fuzzy Search enabled")
+    
     analyzer = InventoryAnalyzer()
 
     # Analyze inventory
