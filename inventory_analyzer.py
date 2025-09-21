@@ -36,9 +36,9 @@ class InventoryAnalyzer:
             consumer_id = "bf5182d5-de59-4483-8b42-adf0be373047"
             private_key_path = "/Users/rishabh/WM_IO_private_key.pem"
             self.walmart_api = WalmartAuth(consumer_id, private_key_path)
-            logger.info("✓ Walmart API initialized successfully")
+            logger.info("Walmart API initialized successfully")
         except Exception as e:
-            logger.warning(f"⚠ Could not initialize Walmart API: {e}")
+            logger.warning(f"Could not initialize Walmart API: {e}")
             self.walmart_api = None
 
         # Initialize Product Search Enhancer with Walmart fuzzy search
@@ -161,7 +161,7 @@ class InventoryAnalyzer:
         logger.debug(f"Trying fuzzy search fallback for: {product_name[:50]}...")
         fuzzy_price, fuzzy_url = self.product_searcher.search_product_price(product_name)
         if fuzzy_price > 0:
-            logger.info(f"🔍 Found fuzzy match: ${fuzzy_price:.2f} for '{product_name[:30]}...'")
+            logger.info(f"Found fuzzy match: ${fuzzy_price:.2f} for '{product_name[:30]}...'")
             return (fuzzy_price, fuzzy_url)
 
         logger.debug(f"No retail price or link found for {product_name[:50]}...")
@@ -240,7 +240,7 @@ class InventoryAnalyzer:
             discount_pct = self.calculate_discount_percentage(supplier_price, retail_price)
             category = self.categorize_price(discount_pct, retail_price)
 
-            logger.debug(f"💵 Supplier: ${supplier_price:.2f} | Retail: ${retail_price:.2f} | Discount: {discount_pct:.1f}% | Category: {category}")
+            logger.debug(f"Supplier: ${supplier_price:.2f} | Retail: ${retail_price:.2f} | Discount: {discount_pct:.1f}% | Category: {category}")
 
             # Update dataframe
             df.at[index, 'Market_Comp'] = market_url
@@ -258,19 +258,19 @@ class InventoryAnalyzer:
         # Final statistics
         logger.info("Analysis complete!")
         logger.info(f"Final Statistics:")
-        logger.info(f"   • Total items processed: {total_items}")
-        logger.info(f"   • UPC matches found: {upc_found}")
-        logger.info(f"   • Walmart prices found: {walmart_found}")
-        logger.info(f"   • No prices found: {no_price_found}")
-        logger.info(f"   • Success rate: {(walmart_found/total_items)*100:.1f}%")
+        logger.info(f"   Total items processed: {total_items}")
+        logger.info(f"   UPC matches found: {upc_found}")
+        logger.info(f"   Walmart prices found: {walmart_found}")
+        logger.info(f"   No prices found: {no_price_found}")
+        logger.info(f"   Success rate: {(walmart_found/total_items)*100:.1f}%")
         
         # Enhanced search statistics
         if hasattr(self, 'product_searcher'):
             search_stats = self.product_searcher.get_cache_stats()
             if search_stats['total_searches'] > 0:
-                logger.info(f"   • Fuzzy search attempts: {search_stats['total_searches']}")
-                logger.info(f"   • Fuzzy search hits: {search_stats['cache_hits']}")
-                logger.info(f"   • Fuzzy search hit rate: {search_stats['hit_rate']*100:.1f}%")
+                logger.info(f"   Fuzzy search attempts: {search_stats['total_searches']}")
+                logger.info(f"   Fuzzy search hits: {search_stats['cache_hits']}")
+                logger.info(f"   Fuzzy search hit rate: {search_stats['hit_rate']*100:.1f}%")
 
         return df
 
@@ -312,7 +312,7 @@ class InventoryAnalyzer:
 
 def main():
     logger.info("Starting Inventory Intelligence Analyzer")
-    logger.info("🚀 Enhanced mode: UPC + Walmart API + Fuzzy Search enabled")
+    logger.info("Enhanced mode: UPC + Walmart API + Fuzzy Search enabled")
     
     analyzer = InventoryAnalyzer()
 
