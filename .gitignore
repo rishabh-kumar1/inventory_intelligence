@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# API Keys
+*.pem
+*.key
+
+# Results
+inventory_analysis.log
+inventory_analysis_results.csv 
