@@ -14,7 +14,7 @@ Regional discount stores typically sell products at 30-70% below traditional ret
 
 1. **Install dependencies:**
 
-   ```bash
+   ```
    poetry install
    ```
 
@@ -27,8 +27,14 @@ Regional discount stores typically sell products at 30-70% below traditional ret
    ```
 
 3. **Run analysis:**
-   ```bash
+
+   ```
    poetry run python inventory_analyzer.py
+   ```
+
+4. **Verify calculations (optional):**
+   ```
+   poetry run python verify_calculations.py
    ```
 
 ## How It Works
