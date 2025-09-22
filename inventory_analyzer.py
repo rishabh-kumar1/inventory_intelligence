@@ -14,6 +14,7 @@ import json
 import logging
 from walmart_auth import WalmartAuth
 from product_search_enhancer import ProductSearchEnhancer
+import config
 
 # Configure logging
 logging.basicConfig(
@@ -33,9 +34,7 @@ class InventoryAnalyzer:
 
         # Initialize Walmart API
         try:
-            consumer_id = "bf5182d5-de59-4483-8b42-adf0be373047"
-            private_key_path = "/Users/rishabh/WM_IO_private_key.pem"
-            self.walmart_api = WalmartAuth(consumer_id, private_key_path)
+            self.walmart_api = WalmartAuth(config.WALMART_CONSUMER_ID, config.WALMART_PRIVATE_KEY_PATH)
             logger.info("Walmart API initialized successfully")
         except Exception as e:
             logger.warning(f"Could not initialize Walmart API: {e}")

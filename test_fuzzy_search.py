@@ -6,6 +6,7 @@ Test script for the fuzzy product search enhancement
 import logging
 from product_search_enhancer import ProductSearchEnhancer
 from walmart_auth import WalmartAuth
+import config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
@@ -23,12 +24,10 @@ def test_fuzzy_search():
         "MCCORMICK GOURMET DILL SEED ORGANIC 1 OZ"
     ]
     
-    # Initialize Walmart API (optional)
+
     walmart_api = None
     try:
-        consumer_id = "bf5182d5-de59-4483-8b42-adf0be373047"
-        private_key_path = "/Users/rishabh/WM_IO_private_key.pem"
-        walmart_api = WalmartAuth(consumer_id, private_key_path)
+        walmart_api = WalmartAuth(config.WALMART_CONSUMER_ID, config.WALMART_PRIVATE_KEY_PATH)
         logger.info("Walmart API available for testing")
     except Exception as e:
         logger.warning(f"Walmart API not available: {e}")
